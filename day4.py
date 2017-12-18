@@ -1,7 +1,7 @@
 import unittest
 import itertools
 
-import day4_data
+import data
 
 
 def no_duplicates(phrase):
@@ -59,7 +59,7 @@ class TestPassphrases(unittest.TestCase):
         self.assertEqual(2, ret)
 
     def test_input(self):
-        ret = count_no_duplicates(day4_data.input)
+        ret = count_no_duplicates(data.day4)
         self.assertEqual(337, ret)
 
     def test_are_anagrams(self):
@@ -72,7 +72,7 @@ class TestPassphrases(unittest.TestCase):
 
     def test_count_anagrams(self):
         self.assertEqual(3, count_no_anagrams(test_anagram))
-        self.assertEqual(231, count_no_anagrams(day4_data.input))
+        self.assertEqual(231, count_no_anagrams(data.day4))
 
 if __name__ == '__main__':
     unittest.main()
