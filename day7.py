@@ -80,20 +80,23 @@ def all_elements_equal(lst):
     return lst.count(lst[0]) == len(lst)
 
 
-def balance(successors, tree_weights, node_weights, root):
+def balance(successors, predecessors, tree_weights, node_weights, root):
     child = None
     new_weight = 0
 
-    current = root
-    subtree_weights = [tree_weights[n] for n in successors[current]]
-    common_weight = Counter(subtree_weights).most_common(1)[0][0]  # most common weight.
-    if not all_elements_equal(subtree_weights):
-        for node in successors[current]:
-            if tree_weights[node] != common_weight:
-                child = node
-                new_weight = node_weights[child] + common_weight - tree_weights[child]
-                return child, new_weight
+    unbalanced = unbalanced_node(successors, tree_weights, root)
 
+    if unbalanced is None:
+        return child, new_weight
+
+    parent = predecessors[unbalanced]
+
+    subtree_weights = [tree_weights[n] for n in successors[parent]]
+    common_weight = Counter(subtree_weights).most_common(1)[0][0]  # most common weight.
+    assert not all_elements_equal(subtree_weights)
+
+    child = unbalanced
+    new_weight = node_weights[child] + common_weight - tree_weights[child]
     return child, new_weight
 
 
@@ -109,6 +112,30 @@ def is_balanced(successors, tree_weights, node):
         return False
 
     return all([is_balanced(successors, tree_weights, n) for n in successors[node]])
+
+
+def unbalanced_node(successors, tree_weights, node):
+    succ = successors[node]
+
+    if is_balanced(successors, tree_weights, node):
+        print('Tree from {} is balanced'.format(node))
+        return None
+
+    unbalanced_children = [unbalanced_node(successors, tree_weights, n) for n in succ]
+
+    print 'At node {}, children balanced: {}'.format(node, unbalanced_children)
+
+    # All children's trees are balanced, but the tree is still unbalanced. One of the children of the current node is
+    # the issue. Find the one which has a different tree weight and return it.
+    if not any(unbalanced_children):
+        children_weights = [tree_weights[n] for n in succ]
+        common_weight = Counter(children_weights).most_common(1)[0][0]  # most common weight.
+        for n in succ:
+            if tree_weights[n] != common_weight:
+                return n
+
+    # One of the children's trees is unbalanced... find which one is not None.
+    return filter(None, unbalanced_children)[0]
 
 
 class Day5(unittest.TestCase):
@@ -160,15 +187,42 @@ class Day5(unittest.TestCase):
         self.assertTrue(root in tree_weights)
         self.assertEqual(778, tree_weights[root])
 
+    def test_balance_helpers(self):
+        records = parse(example_input)
+        node_weights, successors, predecessors = make_tree(records)
+
+        root = find_root(successors, predecessors)
+        tree_weights = compute_tree_weights(successors, node_weights, root)
+
+        # Root is unbalanced, but its children are.
+        self.assertFalse(is_balanced(successors, tree_weights, root))
+        self.assertTrue(is_balanced(successors, tree_weights, 'fwft'))
+        self.assertTrue(is_balanced(successors, tree_weights, 'padx'))
+        self.assertTrue(is_balanced(successors, tree_weights, 'ugml'))
+
+        # No unbalanced node in subtrees, just at the root.
+        self.assertEqual(None, unbalanced_node(successors, tree_weights, 'fwft'))
+        self.assertEqual(None, unbalanced_node(successors, tree_weights, 'padx'))
+        self.assertEqual(None, unbalanced_node(successors, tree_weights, 'ugml'))
+        self.assertEqual('ugml', unbalanced_node(successors, tree_weights, root))
+
+        # Mess with the tree to find another unbalanced node deeper in the tree.
+        node_weights['ugml'] = 60
+        tree_weights = compute_tree_weights(successors, node_weights, root)
+        self.assertEqual(None, unbalanced_node(successors, tree_weights, root))
+
+        node_weights['xhth'] = 1
+        tree_weights = compute_tree_weights(successors, node_weights, root)
+        self.assertEqual('xhth', unbalanced_node(successors, tree_weights, root))
+
     def test_balance_example(self):
         records = parse(example_input)
         node_weights, successors, predecessors = make_tree(records)
 
         root = find_root(successors, predecessors)
         tree_weights = compute_tree_weights(successors, node_weights, root)
-        self.assertFalse(is_balanced(successors, tree_weights, root))
 
-        (child, new_weight) = balance(successors, tree_weights, node_weights, root)
+        (child, new_weight) = balance(successors, predecessors, tree_weights, node_weights, root)
         self.assertEqual('ugml', child)
         self.assertEqual(60, new_weight)
 
@@ -176,10 +230,11 @@ class Day5(unittest.TestCase):
         balanced_node_weights = copy.deepcopy(node_weights)
         balanced_node_weights[child] = new_weight
         balanced_tree_weights = compute_tree_weights(successors, balanced_node_weights, root)
-        (no_child, no_weights) = balance(successors, balanced_tree_weights, balanced_node_weights, root)
+        (no_child, no_weights) = balance(successors, predecessors, balanced_tree_weights, balanced_node_weights, root)
         self.assertEqual(None, no_child)
         self.assertEqual(0, no_weights)
         self.assertTrue(is_balanced(successors, balanced_tree_weights, root))
+        self.assertEqual(None, unbalanced_node(successors, balanced_tree_weights, root))
 
     def test_balance_data(self):
         records = parse(day7_data)
@@ -188,20 +243,19 @@ class Day5(unittest.TestCase):
         root = find_root(successors, predecessors)
         tree_weights = compute_tree_weights(successors, node_weights, root)
         self.assertFalse(is_balanced(successors, tree_weights, root))
+        self.assertEqual('jdxfsa', unbalanced_node(successors, tree_weights, root))
 
-        (child, new_weight) = balance(successors, tree_weights, node_weights, root)
-        self.assertEqual('sfruur', child)
-        self.assertEqual(57, new_weight)
+        (child, new_weight) = balance(successors, predecessors, tree_weights, node_weights, root)
+        self.assertEqual('jdxfsa', child)
+        self.assertEqual(1864, new_weight)
 
         balanced_node_weights = copy.deepcopy(node_weights)
         balanced_node_weights[child] = new_weight
         balanced_tree_weights = compute_tree_weights(successors, balanced_node_weights, root)
-        (no_child, no_weights) = balance(successors, balanced_tree_weights, balanced_node_weights, root)
+        (no_child, no_weights) = balance(successors, predecessors, balanced_tree_weights, balanced_node_weights, root)
         self.assertEqual(None, no_child)
         self.assertEqual(0, no_weights)
         self.assertTrue(is_balanced(successors, balanced_tree_weights, root))
-
-        self.fail()
 
 
 def run():
