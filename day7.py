@@ -62,19 +62,12 @@ def compute_tree_weights(successors, weights, root):
     tree_weights = {}
 
     def _helper(node):
-        print node
         if node in tree_weights:
             return tree_weights[node]
 
-        assert node in successors
-        if not successors[node]:  # Leaf nodes
-            tree_weights[node] = weights[node]
-            return tree_weights[node]
-
         # Recursively compute all children tree weights.
-        total_weights = weights[node] + sum([_helper(n) for n in successors[node]])
-        tree_weights[node] = total_weights
-        return total_weights
+        tree_weights[node] = weights[node] + sum([_helper(n) for n in successors[node]])
+        return tree_weights[node]
 
 
     _helper(root)
