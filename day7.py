@@ -1,5 +1,7 @@
+import copy
 import unittest
 import re
+from collections import Counter
 
 from data import day7 as day7_data
 
@@ -74,6 +76,41 @@ def compute_tree_weights(successors, weights, root):
     return tree_weights
 
 
+def all_elements_equal(lst):
+    return lst.count(lst[0]) == len(lst)
+
+
+def balance(successors, tree_weights, node_weights, root):
+    child = None
+    new_weight = 0
+
+    current = root
+    subtree_weights = [tree_weights[n] for n in successors[current]]
+    common_weight = Counter(subtree_weights).most_common(1)[0][0]  # most common weight.
+    if not all_elements_equal(subtree_weights):
+        for node in successors[current]:
+            if tree_weights[node] != common_weight:
+                child = node
+                new_weight = node_weights[child] + common_weight - tree_weights[child]
+                return child, new_weight
+
+    return child, new_weight
+
+
+def is_balanced(successors, tree_weights, node):
+    if not successors[node]:
+        return True
+
+    subtree_weights = [tree_weights[n] for n in successors[node]]
+
+    if not all_elements_equal(subtree_weights):
+        print('At node {}, children tree weights are: {}'.format(
+            node, zip(successors[node], subtree_weights)))
+        return False
+
+    return all([is_balanced(successors, tree_weights, n) for n in successors[node]])
+
+
 class Day5(unittest.TestCase):
     def test_parse(self):
         ret = parse(example_input)
@@ -102,13 +139,12 @@ class Day5(unittest.TestCase):
         root = find_root(successors, predecessors)
         self.assertEqual('fbgguv', root)
 
-    def test_tree_weight_exampe(self):
+    def test_tree_weight_example(self):
         records = parse(example_input)
         weights, successors, predecessors = make_tree(records)
 
         root = find_root(successors, predecessors)
         tree_weights = compute_tree_weights(successors, weights, root)
-        print tree_weights
 
         # Leaf nodes:
         self.assertTrue('pbga' in tree_weights)
@@ -123,6 +159,49 @@ class Day5(unittest.TestCase):
         # Tree root:
         self.assertTrue(root in tree_weights)
         self.assertEqual(778, tree_weights[root])
+
+    def test_balance_example(self):
+        records = parse(example_input)
+        node_weights, successors, predecessors = make_tree(records)
+
+        root = find_root(successors, predecessors)
+        tree_weights = compute_tree_weights(successors, node_weights, root)
+        self.assertFalse(is_balanced(successors, tree_weights, root))
+
+        (child, new_weight) = balance(successors, tree_weights, node_weights, root)
+        self.assertEqual('ugml', child)
+        self.assertEqual(60, new_weight)
+
+        # Check they are balanced
+        balanced_node_weights = copy.deepcopy(node_weights)
+        balanced_node_weights[child] = new_weight
+        balanced_tree_weights = compute_tree_weights(successors, balanced_node_weights, root)
+        (no_child, no_weights) = balance(successors, balanced_tree_weights, balanced_node_weights, root)
+        self.assertEqual(None, no_child)
+        self.assertEqual(0, no_weights)
+        self.assertTrue(is_balanced(successors, balanced_tree_weights, root))
+
+    def test_balance_data(self):
+        records = parse(day7_data)
+        node_weights, successors, predecessors = make_tree(records)
+
+        root = find_root(successors, predecessors)
+        tree_weights = compute_tree_weights(successors, node_weights, root)
+        self.assertFalse(is_balanced(successors, tree_weights, root))
+
+        (child, new_weight) = balance(successors, tree_weights, node_weights, root)
+        self.assertEqual('sfruur', child)
+        self.assertEqual(57, new_weight)
+
+        balanced_node_weights = copy.deepcopy(node_weights)
+        balanced_node_weights[child] = new_weight
+        balanced_tree_weights = compute_tree_weights(successors, balanced_node_weights, root)
+        (no_child, no_weights) = balance(successors, balanced_tree_weights, balanced_node_weights, root)
+        self.assertEqual(None, no_child)
+        self.assertEqual(0, no_weights)
+        self.assertTrue(is_balanced(successors, balanced_tree_weights, root))
+
+        self.fail()
 
 
 def run():
