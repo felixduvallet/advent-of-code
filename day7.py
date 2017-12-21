@@ -58,6 +58,7 @@ def find_root(successors, predecessors):
 
     return it
 
+
 def compute_tree_weights(successors, weights, root):
     tree_weights = {}
 
@@ -68,7 +69,6 @@ def compute_tree_weights(successors, weights, root):
         # Recursively compute all children tree weights.
         tree_weights[node] = weights[node] + sum([_helper(n) for n in successors[node]])
         return tree_weights[node]
-
 
     _helper(root)
     return tree_weights
