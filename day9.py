@@ -16,6 +16,11 @@ def remove_garbage(stream):
     return re.sub(r'<.*?>', '', stream)
 
 
+def count_garbage(stream):
+    garbage = re.findall(r'<.*?>', stream)
+    return sum([len(g) - 2 for g in garbage])
+
+
 def score(stream):
     score = 0
     depth = 0
@@ -71,3 +76,13 @@ class TestStreamProcessing(unittest.TestCase):
 
     def test_complete_data(self):
         self.assertEqual(10820, score(process(day9_data)))
+
+    def test_count_garbage_examples(self):
+        self.assertEqual(0, count_garbage('<>'))
+        self.assertEqual(17, count_garbage('<random characters>'))
+        self.assertEqual(3, count_garbage('<<<<>'))
+        self.assertEqual(2, count_garbage(remove_cancellations('<{!>}>')))
+        self.assertEqual(10, count_garbage(remove_cancellations('<{o"i!a,<{i<a>')))
+
+    def test_count_garbage_data(self):
+        self.assertEqual(5547, count_garbage(remove_cancellations(day9_data)))
